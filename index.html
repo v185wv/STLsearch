@@ -1,0 +1,1524 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STL文件存储与检索系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/STLLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .main-content {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .upload-section {
+            flex: 1;
+            min-width: 300px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .search-section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            position: relative;
+        }
+        
+        .search-box input {
+            flex: 1;
+            padding: 12px 15px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            font-size: 1rem;
+        }
+        
+        .search-box input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #FF416C, #FF4B2B);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 50px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(255, 75, 43, 0.4);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 75, 43, 0.6);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(45deg, #4776E6, #8E54E9);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(45deg, #dc3545, #c82333);
+        }
+        
+        .btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .file-input-area {
+            border: 2px dashed rgba(255, 255, 255, 0.4);
+            border-radius: 10px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .file-input-area:hover {
+            border-color: rgba(255, 255, 255, 0.7);
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .file-input-area i {
+            font-size: 48px;
+            margin-bottom: 15px;
+            display: block;
+            opacity: 0.7;
+        }
+        
+        .file-input-text {
+            font-size: 1.1rem;
+        }
+        
+        #file-input {
+            display: none;
+        }
+        
+        .metadata-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .form-group label {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .form-group input, .form-group textarea {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            font-size: 1rem;
+        }
+        
+        .form-group textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        
+        .models-section {
+            flex: 2;
+            min-width: 500px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .search-results-info {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 5px 10px;
+            border-radius: 15px;
+        }
+        
+        .models-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+            max-height: 600px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+        
+        .model-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .model-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .model-preview {
+            height: 150px;
+            background: #121212;
+            position: relative;
+        }
+        
+        .model-info {
+            padding: 15px;
+        }
+        
+        .model-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 1.1rem;
+        }
+        
+        .model-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        
+        .tag {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+        
+        .model-actions {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 5px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 100;
+        }
+        
+        .model-card:hover .model-actions {
+            opacity: 1;
+        }
+        
+        .action-btn {
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            border: none;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .action-btn:hover {
+            background: rgba(0, 0, 0, 0.9);
+            transform: scale(1.1);
+        }
+        
+        .delete-btn:hover {
+            background: #dc3545 !important;
+        }
+        
+        .viewer-section {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            margin-top: 20px;
+            display: none;
+        }
+        
+        #stl-viewer {
+            width: 100%;
+            height: 500px;
+            background: #121212;
+        }
+        
+        .viewer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: rgba(0, 0, 0, 0.5);
+        }
+        
+        .viewer-controls {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .control-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            opacity: 0.7;
+        }
+        
+        .status-message {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            text-align: center;
+            display: none;
+        }
+        
+        .status-success {
+            background: rgba(40, 167, 69, 0.2);
+            border: 1px solid rgba(40, 167, 69, 0.5);
+        }
+        
+        .status-error {
+            background: rgba(220, 53, 69, 0.2);
+            border: 1px solid rgba(220, 53, 69, 0.5);
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+        }
+        
+        .modal h3 {
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+        
+        .modal p {
+            margin-bottom: 20px;
+            opacity: 0.9;
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 15px;
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .upload-section, .models-section {
+                min-width: 100%;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .models-grid {
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            }
+            
+            .modal-actions {
+                flex-direction: column;
+            }
+            
+            .section-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+        }
+        
+        /* 新增搜索下拉样式 */
+        .search-results-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 0 0 15px 15px;
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .search-results-dropdown.active {
+            display: block;
+        }
+        
+        .search-result-item {
+            padding: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .search-result-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+        
+        .search-result-preview {
+            width: 60px;
+            height: 60px;
+            background: #121212;
+            border-radius: 8px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        
+        .search-result-info {
+            flex: 1;
+        }
+        
+        .search-result-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .search-result-description {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .search-result-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 5px;
+        }
+        
+        .search-result-tag {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 2px 6px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+        }
+        
+        .no-results {
+            padding: 20px;
+            text-align: center;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>STL文件存储与检索系统</h1>
+            <p class="subtitle">上传、存储并通过文字检索您的3D模型</p>
+        </header>
+        
+        <div class="search-section">
+            <div class="search-box">
+                <input type="text" id="search-input" placeholder="输入模型名称、标签或描述进行搜索...">
+                <button class="btn" id="search-btn">搜索</button>
+                <button class="btn btn-secondary" id="show-all-btn">显示全部</button>
+                <div class="search-results-dropdown" id="search-results-dropdown">
+                    <!-- 搜索结果将在这里动态生成 -->
+                </div>
+            </div>
+            <div class="search-tips">
+                <small>提示：您可以通过模型名称、标签或描述中的关键词进行搜索</small>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="upload-section">
+                <h2>上传新模型</h2>
+                
+                <div class="file-input-area" id="drop-area">
+                    <i>📁</i>
+                    <p class="file-input-text">拖放STL文件到此处，或点击选择文件</p>
+                    <input type="file" id="file-input" accept=".stl">
+                </div>
+                
+                <div class="metadata-form">
+                    <div class="form-group">
+                        <label for="model-name">模型名称</label>
+                        <input type="text" id="model-name" placeholder="输入模型名称">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="model-tags">标签（用逗号分隔）</label>
+                        <input type="text" id="model-tags" placeholder="例如：机械,零件,齿轮">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="model-description">描述</label>
+                        <textarea id="model-description" placeholder="描述这个模型的用途、特点等信息"></textarea>
+                    </div>
+                    
+                    <div id="status-message" class="status-message"></div>
+                    
+                    <button class="btn" id="save-btn" onclick="location.reload()">保存模型</button>
+                </div>
+                
+                <div class="instructions">
+                    <h3>使用说明</h3>
+                    <ul>
+                        <li>上传STL文件并添加描述信息</li>
+                        <li>使用关键词搜索已存储的模型</li>
+                        <li>点击模型卡片查看3D预览</li>
+                        <li>鼠标悬停在模型卡片上显示删除按钮</li>
+                        <li>所有数据存储在您的浏览器中</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="models-section">
+                <div class="section-header">
+                    <h2>模型库</h2>
+                    <div id="search-results-info" class="search-results-info" style="display: none;">
+                        <!-- 搜索结果显示信息 -->
+                    </div>
+                </div>
+                <div class="models-grid" id="models-grid">
+                    <div class="empty-state" id="empty-state">
+                        <p>暂无模型，请上传您的第一个STL文件</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="viewer-section" id="viewer-section">
+            <div class="viewer-header">
+                <h3 id="viewer-title">模型预览</h3>
+                <div class="viewer-controls">
+                    <button class="control-btn" id="close-viewer">关闭</button>
+                </div>
+            </div>
+            <div id="stl-viewer"></div>
+        </div>
+        
+        <!-- 删除确认模态框 -->
+        <div class="modal" id="delete-modal">
+            <div class="modal-content">
+                <h3>确认删除</h3>
+                <p id="delete-message">您确定要删除这个模型吗？此操作不可恢复。</p>
+                <div class="modal-actions">
+                    <button class="btn btn-danger" id="confirm-delete" onclick="location.reload()">确认删除</button>
+                    <button class="btn btn-secondary" id="cancel-delete">取消</button>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>STL文件存储与检索系统 &copy; 2025 | 使用Three.js和IndexedDB构建</p>
+        </footer>
+    </div>
+
+    <script>
+        // 数据库和全局变量
+        let db;
+        const DB_NAME = 'STLStorage';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'models';
+        
+        let scene, camera, renderer, controls;
+        let currentModel = null;
+        let modelToDelete = null;
+        let currentModels = []; // 存储当前显示的模型列表
+        let isSearching = false; // 是否正在搜索
+        let currentSearchQuery = ''; // 当前搜索关键词
+        let searchTimeout = null; // 搜索防抖计时器
+        
+        // 显示状态消息
+        function showStatus(message, isError = false) {
+            const statusEl = document.getElementById('status-message');
+            if (!statusEl) {
+                console.error('状态消息元素未找到');
+                return;
+            }
+            statusEl.textContent = message;
+            statusEl.className = `status-message ${isError ? 'status-error' : 'status-success'}`;
+            statusEl.style.display = 'block';
+            
+            setTimeout(() => {
+                statusEl.style.display = 'none';
+            }, 5000);
+        }
+        
+        // 更新搜索结果显示信息
+        function updateSearchResultsInfo(results, query) {
+            const infoEl = document.getElementById('search-results-info');
+            if (!infoEl) return;
+            
+            if (isSearching && query) {
+                infoEl.textContent = `搜索 "${query}" 找到 ${results.length} 个结果`;
+                infoEl.style.display = 'block';
+            } else {
+                infoEl.style.display = 'none';
+            }
+        }
+        
+        // 初始化数据库
+        function initDatabase() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                
+                request.onerror = () => {
+                    console.error('数据库打开失败');
+                    reject('数据库打开失败');
+                };
+                
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    console.log('数据库打开成功');
+                    resolve(db);
+                };
+                
+                request.onupgradeneeded = (event) => {
+                    const database = event.target.result;
+                    
+                    // 创建对象存储空间
+                    if (!database.objectStoreNames.contains(STORE_NAME)) {
+                        const objectStore = database.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                        
+                        // 创建索引以便搜索
+                        objectStore.createIndex('name', 'name', { unique: false });
+                        objectStore.createIndex('tags', 'tags', { unique: false, multiEntry: true });
+                        objectStore.createIndex('description', 'description', { unique: false });
+                        console.log('数据库结构创建成功');
+                    }
+                };
+            });
+        }
+        
+        // 保存模型到数据库
+        function saveModel(file, name, tags, description) {
+            return new Promise((resolve, reject) => {
+                if (!db) {
+                    reject('数据库未初始化');
+                    return;
+                }
+
+                const reader = new FileReader();
+                
+                reader.onload = function(event) {
+                    const transaction = db.transaction([STORE_NAME], 'readwrite');
+                    const objectStore = transaction.objectStore(STORE_NAME);
+                    
+                    const modelData = {
+                        name: name,
+                        tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag),
+                        description: description,
+                        file: event.target.result,
+                        fileName: file.name,
+                        fileSize: file.size,
+                        uploadDate: new Date().toISOString()
+                    };
+                    
+                    const request = objectStore.add(modelData);
+                    
+                    request.onsuccess = () => {
+                        console.log('模型保存成功，ID:', request.result);
+                        resolve(request.result);
+                    };
+                    
+                    request.onerror = (event) => {
+                        console.error('模型保存失败:', event.target.error);
+                        reject('模型保存失败: ' + event.target.error);
+                    };
+
+                    transaction.oncomplete = () => {
+                        console.log('保存事务完成');
+                    };
+
+                    transaction.onerror = (event) => {
+                        console.error('保存事务错误:', event.target.error);
+                        reject('保存事务错误: ' + event.target.error);
+                    };
+                };
+                
+                reader.onerror = () => {
+                    reject('文件读取失败');
+                };
+                
+                reader.readAsArrayBuffer(file);
+            });
+        }
+        
+        // 从数据库获取所有模型
+        function getAllModels() {
+            return new Promise((resolve, reject) => {
+                if (!db) {
+                    reject('数据库未初始化');
+                    return;
+                }
+                
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const objectStore = transaction.objectStore(STORE_NAME);
+                const request = objectStore.getAll();
+                
+                request.onsuccess = () => {
+                    console.log('获取到模型数量:', request.result.length);
+                    currentModels = request.result; // 更新当前模型列表
+                    resolve(request.result);
+                };
+                
+                request.onerror = () => {
+                    reject('获取模型失败');
+                };
+            });
+        }
+        
+        // 删除模型
+        function deleteModel(modelId) {
+            return new Promise((resolve, reject) => {
+                if (!db) {
+                    reject('数据库未初始化');
+                    return;
+                }
+                
+                console.log('开始删除模型，ID:', modelId);
+                
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const objectStore = transaction.objectStore(STORE_NAME);
+                const request = objectStore.delete(modelId);
+                
+                request.onsuccess = () => {
+                    console.log('模型删除成功，ID:', modelId);
+                    // 从当前模型列表中移除已删除的模型
+                    currentModels = currentModels.filter(model => model.id !== modelId);
+                    resolve(modelId);
+                };
+                
+                request.onerror = (event) => {
+                    console.error('模型删除失败:', event.target.error);
+                    reject('模型删除失败: ' + event.target.error);
+                };
+
+                transaction.oncomplete = () => {
+                    console.log('删除事务完成');
+                };
+
+                transaction.onerror = (event) => {
+                    console.error('删除事务错误:', event.target.error);
+                    reject('删除事务错误: ' + event.target.error);
+                };
+            });
+        }
+        
+        // 搜索模型
+        function searchModels(query) {
+            return new Promise((resolve, reject) => {
+                if (!db) {
+                    reject('数据库未初始化');
+                    return;
+                }
+                
+                getAllModels().then(models => {
+                    const lowerQuery = query.toLowerCase();
+                    const results = models.filter(model => 
+                        model.name.toLowerCase().includes(lowerQuery) ||
+                        (model.tags && model.tags.some(tag => tag.toLowerCase().includes(lowerQuery))) ||
+                        (model.description && model.description.toLowerCase().includes(lowerQuery))
+                    );
+                    resolve(results);
+                }).catch(reject);
+            });
+        }
+        
+        // 渲染模型列表
+        function renderModels(models) {
+            const grid = document.getElementById('models-grid');
+            const emptyState = document.getElementById('empty-state');
+            
+            if (!grid || !emptyState) {
+                console.error('模型网格或空状态元素未找到');
+                return;
+            }
+            
+            // 更新当前模型列表
+            currentModels = models;
+            
+            if (models.length === 0) {
+                grid.innerHTML = '';
+                grid.appendChild(emptyState);
+                emptyState.style.display = 'block';
+                
+                // 更新搜索结果显示信息
+                if (isSearching && currentSearchQuery) {
+                    updateSearchResultsInfo([], currentSearchQuery);
+                }
+                return;
+            }
+            
+            emptyState.style.display = 'none';
+            grid.innerHTML = '';
+            
+            models.forEach(model => {
+                const card = document.createElement('div');
+                card.className = 'model-card';
+                card.dataset.id = model.id;
+                
+                // 创建操作按钮
+                const actions = document.createElement('div');
+                actions.className = 'model-actions';
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'action-btn delete-btn';
+                deleteBtn.title = '删除模型';
+                deleteBtn.innerHTML = '×';
+                deleteBtn.style.cssText = 'background: rgba(0,0,0,0.8); color: white; border: none; width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 20px; font-weight: bold;';
+                
+                deleteBtn.addEventListener('click', function(e) {
+                    console.log('删除按钮被点击，模型ID:', model.id);
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showDeleteConfirm(model);
+                });
+                
+                actions.appendChild(deleteBtn);
+                
+                // 创建缩略图容器
+                const preview = document.createElement('div');
+                preview.className = 'model-preview';
+                
+                // 创建模型信息区域
+                const info = document.createElement('div');
+                info.className = 'model-info';
+                
+                const name = document.createElement('div');
+                name.className = 'model-name';
+                name.textContent = model.name;
+                
+                const desc = document.createElement('div');
+                desc.className = 'model-description';
+                desc.textContent = model.description && model.description.length > 50 ? 
+                    model.description.substring(0, 50) + '...' : (model.description || '暂无描述');
+                
+                const tags = document.createElement('div');
+                tags.className = 'model-tags';
+                
+                if (model.tags && model.tags.length > 0) {
+                    model.tags.forEach(tag => {
+                        const tagElement = document.createElement('span');
+                        tagElement.className = 'tag';
+                        tagElement.textContent = tag;
+                        tags.appendChild(tagElement);
+                    });
+                }
+                
+                info.appendChild(name);
+                info.appendChild(desc);
+                info.appendChild(tags);
+                
+                card.appendChild(actions);
+                card.appendChild(preview);
+                card.appendChild(info);
+                
+                // 点击卡片查看模型
+                card.addEventListener('click', () => {
+                    viewModel(model);
+                });
+                
+                grid.appendChild(card);
+
+                // 为卡片创建简单的3D预览
+                createThumbnail(model, preview);
+            });
+            
+            // 更新搜索结果显示信息
+            if (isSearching && currentSearchQuery) {
+                updateSearchResultsInfo(models, currentSearchQuery);
+            }
+        }
+        
+        // 显示搜索下拉结果
+        function renderSearchDropdown(results) {
+            const dropdown = document.getElementById('search-results-dropdown');
+            if (!dropdown) return;
+            
+            if (results.length === 0) {
+                dropdown.innerHTML = '<div class="no-results">未找到匹配的模型</div>';
+                dropdown.classList.add('active');
+                return;
+            }
+            
+            dropdown.innerHTML = '';
+            
+            results.forEach(model => {
+                const item = document.createElement('div');
+                item.className = 'search-result-item';
+                
+                const preview = document.createElement('div');
+                preview.className = 'search-result-preview';
+                
+                const info = document.createElement('div');
+                info.className = 'search-result-info';
+                
+                const name = document.createElement('div');
+                name.className = 'search-result-name';
+                name.textContent = model.name;
+                
+                const desc = document.createElement('div');
+                desc.className = 'search-result-description';
+                desc.textContent = model.description && model.description.length > 80 ? 
+                    model.description.substring(0, 80) + '...' : (model.description || '暂无描述');
+                
+                const tags = document.createElement('div');
+                tags.className = 'search-result-tags';
+                
+                if (model.tags && model.tags.length > 0) {
+                    model.tags.slice(0, 3).forEach(tag => {
+                        const tagElement = document.createElement('span');
+                        tagElement.className = 'search-result-tag';
+                        tagElement.textContent = tag;
+                        tags.appendChild(tagElement);
+                    });
+                }
+                
+                info.appendChild(name);
+                info.appendChild(desc);
+                info.appendChild(tags);
+                
+                item.appendChild(preview);
+                item.appendChild(info);
+                
+                // 点击搜索结果项查看模型
+                item.addEventListener('click', () => {
+                    viewModel(model);
+                    hideSearchDropdown();
+                });
+                
+                dropdown.appendChild(item);
+                
+                // 为搜索结果项创建简单的预览
+                createThumbnail(model, preview);
+            });
+            
+            dropdown.classList.add('active');
+        }
+        
+        // 隐藏搜索下拉
+        function hideSearchDropdown() {
+            const dropdown = document.getElementById('search-results-dropdown');
+            if (dropdown) {
+                dropdown.classList.remove('active');
+            }
+        }
+        
+        // 显示删除确认对话框
+        function showDeleteConfirm(model) {
+            console.log('显示删除确认对话框，模型:', model.name);
+            modelToDelete = model;
+            const modal = document.getElementById('delete-modal');
+            const message = document.getElementById('delete-message');
+            
+            if (modal && message) {
+                message.textContent = `您确定要删除模型 "${model.name}" 吗？此操作不可恢复。`;
+                modal.style.display = 'flex';
+            }
+        }
+        
+        // 隐藏删除确认对话框
+        function hideDeleteConfirm() {
+            const modal = document.getElementById('delete-modal');
+            if (modal) {
+                modal.style.display = 'none';
+                modelToDelete = null;
+            }
+        }
+        
+        // 执行删除操作
+        async function executeDelete() {
+            console.log('执行删除操作，模型:', modelToDelete);
+            
+            if (!modelToDelete) {
+                console.error('没有要删除的模型');
+                showStatus('删除失败: 没有选择要删除的模型', true);
+                return;
+            }
+            
+            try {
+                console.log('开始删除模型:', modelToDelete.name);
+                await deleteModel(modelToDelete.id);
+                showStatus(`模型 "${modelToDelete.name}" 删除成功`);
+                
+                // 关键修复：直接使用更新后的 currentModels 重新渲染
+                console.log('删除后当前模型数量:', currentModels.length);
+                
+                // 如果当前正在搜索，重新执行搜索
+                if (isSearching && currentSearchQuery) {
+                    const results = await searchModels(currentSearchQuery);
+                    renderModels(results);
+                } else {
+                    renderModels(currentModels);
+                }
+                
+                // 如果删除的是当前正在查看的模型，关闭查看器
+                if (currentModel && currentModel.userData && currentModel.userData.id === modelToDelete.id) {
+                    document.getElementById('viewer-section').style.display = 'none';
+                }
+                
+            } catch (error) {
+                console.error('删除失败:', error);
+                showStatus('删除失败: ' + error, true);
+            } finally {
+                hideDeleteConfirm();
+            }
+        }
+        
+        // 刷新模型列表（用于保存新模型后）
+        async function refreshModels() {
+            try {
+                const models = await getAllModels();
+                
+                // 如果当前正在搜索，重新执行搜索
+                if (isSearching && currentSearchQuery) {
+                    const results = await searchModels(currentSearchQuery);
+                    renderModels(results);
+                } else {
+                    renderModels(models);
+                }
+            } catch (error) {
+                console.error('刷新模型列表失败:', error);
+            }
+        }
+        
+        // 创建缩略图预览
+        function createThumbnail(model, container) {
+            try {
+                const width = container.clientWidth;
+                const height = container.clientHeight;
+                
+                const scene = new THREE.Scene();
+                const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+                const renderer = new THREE.WebGLRenderer({ alpha: true });
+                
+                renderer.setSize(width, height);
+                renderer.setClearColor(0x000000, 0);
+                container.appendChild(renderer.domElement);
+                
+                const ambientLight = new THREE.AmbientLight(0x404040);
+                scene.add(ambientLight);
+                
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(1, 1, 1);
+                scene.add(directionalLight);
+                
+                const loader = new THREE.STLLoader();
+                const geometry = loader.parse(model.file);
+                
+                geometry.computeBoundingBox();
+                const center = new THREE.Vector3();
+                geometry.boundingBox.getCenter(center);
+                geometry.translate(-center.x, -center.y, -center.z);
+                
+                const material = new THREE.MeshPhongMaterial({ 
+                    color: 0x00a8ff, 
+                    specular: 0x111111, 
+                    shininess: 200
+                });
+                
+                const mesh = new THREE.Mesh(geometry, material);
+                scene.add(mesh);
+                
+                const size = new THREE.Vector3();
+                geometry.boundingBox.getSize(size);
+                const maxDim = Math.max(size.x, size.y, size.z);
+                                
+                // 旋转模型使其竖着正面朝向用户
+                // 绕X轴旋转-90度，使模型竖起来
+                mesh.rotation.x = -Math.PI / 2;
+
+                scene.add(mesh);
+                
+                camera.position.z = maxDim * 1.5;
+                
+                function animate() {
+                    requestAnimationFrame(animate);
+                    mesh.rotation.z += 0.01;
+                    renderer.render(scene, camera);
+                }
+                animate();
+            } catch (error) {
+                console.error('创建缩略图失败:', error);
+                container.innerHTML = '<div style="color: white; text-align: center; padding-top: 60px;">预览失败</div>';
+            }
+        }
+        
+        // 查看完整模型
+        function viewModel(model) {
+            const viewerSection = document.getElementById('viewer-section');
+            const viewerTitle = document.getElementById('viewer-title');
+            
+            if (!viewerSection || !viewerTitle) {
+                console.error('查看器元素未找到');
+                return;
+            }
+            
+            viewerSection.style.display = 'block';
+            viewerTitle.textContent = model.name;
+            
+            if (!scene) {
+                initViewer();
+            } else {
+                if (currentModel) {
+                    scene.remove(currentModel);
+                }
+            }
+            
+            try {
+                const loader = new THREE.STLLoader();
+                const geometry = loader.parse(model.file);
+                
+                geometry.computeBoundingBox();
+                const center = new THREE.Vector3();
+                geometry.boundingBox.getCenter(center);
+                geometry.translate(-center.x, -center.y, -center.z);
+                
+                const material = new THREE.MeshPhongMaterial({ 
+                    color: 0x00a8ff, 
+                    specular: 0x111111, 
+                    shininess: 200
+                });
+                
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.userData = { id: model.id };
+                scene.add(mesh);
+                currentModel = mesh;
+                
+                const size = new THREE.Vector3();
+                geometry.boundingBox.getSize(size);
+                const maxDim = Math.max(size.x, size.y, size.z);
+                camera.position.z = maxDim * 1.5;
+                controls.update();
+            } catch (error) {
+                console.error('加载模型失败:', error);
+                showStatus('加载模型失败: ' + error.message, true);
+            }
+        }
+        
+        // 初始化3D查看器
+        function initViewer() {
+            const viewer = document.getElementById('stl-viewer');
+            if (!viewer) {
+                console.error('STL查看器元素未找到');
+                return;
+            }
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x121212);
+            
+            camera = new THREE.PerspectiveCamera(75, viewer.clientWidth / viewer.clientHeight, 0.1, 1000);
+            camera.position.z = 5;
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(viewer.clientWidth, viewer.clientHeight);
+            viewer.appendChild(renderer.domElement);
+            
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            
+            const ambientLight = new THREE.AmbientLight(0x404040, 1);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(1, 1, 1);
+            scene.add(directionalLight);
+            
+            const axesHelper = new THREE.AxesHelper(2);
+            scene.add(axesHelper);
+            
+            function animate() {
+                requestAnimationFrame(animate);
+                controls.update();
+                renderer.render(scene, camera);
+            }
+            animate();
+            
+            window.addEventListener('resize', function() {
+                const viewer = document.getElementById('stl-viewer');
+                if (viewer) {
+                    camera.aspect = viewer.clientWidth / viewer.clientHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(viewer.clientWidth, viewer.clientHeight);
+                }
+            });
+        }
+        
+        // 初始化应用
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('应用初始化开始');
+            
+            try {
+                await initDatabase();
+                console.log('数据库初始化成功');
+                
+                const models = await getAllModels();
+                console.log('初始模型数量:', models.length);
+                renderModels(models);
+                showStatus(`已加载 ${models.length} 个模型`);
+            } catch (error) {
+                console.error('初始化失败:', error);
+                showStatus('初始化失败: ' + error, true);
+            }
+            
+            // 文件上传事件
+            document.getElementById('file-input').addEventListener('change', function(e) {
+                if (e.target.files.length > 0) {
+                    const file = e.target.files[0];
+                    const modelName = document.getElementById('model-name');
+                    if (modelName && !modelName.value) {
+                        modelName.value = file.name.replace('.stl', '');
+                    }
+                    showStatus(`已选择文件: ${file.name}`, false);
+                }
+            });
+            
+            // 点击上传区域触发文件选择
+            document.getElementById('drop-area').addEventListener('click', function() {
+                document.getElementById('file-input').click();
+            });
+            
+            // 拖放功能
+            const dropArea = document.getElementById('drop-area');
+            
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropArea.addEventListener(eventName, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, unhighlight, false);
+            });
+            
+            function highlight() {
+                dropArea.style.borderColor = 'rgba(255, 255, 255, 0.8)';
+                dropArea.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+            }
+            
+            function unhighlight() {
+                dropArea.style.borderColor = 'rgba(255, 255, 255, 0.4)';
+                dropArea.style.backgroundColor = 'transparent';
+            }
+            
+            dropArea.addEventListener('drop', function(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                
+                if (files.length > 0 && files[0].name.toLowerCase().endsWith('.stl')) {
+                    const file = files[0];
+                    document.getElementById('file-input').files = dt.files;
+                    const modelName = document.getElementById('model-name');
+                    if (modelName && !modelName.value) {
+                        modelName.value = file.name.replace('.stl', '');
+                    }
+                    showStatus(`已选择文件: ${file.name}`, false);
+                } else {
+                    showStatus('请上传有效的STL文件', true);
+                }
+            });
+            
+            // 保存模型按钮
+            document.getElementById('save-btn').addEventListener('click', async function() {
+                const fileInput = document.getElementById('file-input');
+                const nameInput = document.getElementById('model-name');
+                const tagsInput = document.getElementById('model-tags');
+                const descInput = document.getElementById('model-description');
+                const saveBtn = document.getElementById('save-btn');
+                
+                if (!fileInput || !fileInput.files.length) {
+                    showStatus('请选择STL文件', true);
+                    return;
+                }
+                
+                if (!nameInput || !nameInput.value.trim()) {
+                    showStatus('请输入模型名称', true);
+                    return;
+                }
+                
+                saveBtn.disabled = true;
+                const originalText = saveBtn.textContent;
+                saveBtn.textContent = '保存中...';
+                
+                try {
+                    const file = fileInput.files[0];
+                    console.log('开始保存模型:', file.name);
+                    
+                    await saveModel(file, nameInput.value.trim(), tagsInput.value, descInput.value);
+                    
+                    // 清空表单
+                    fileInput.value = '';
+                    nameInput.value = '';
+                    tagsInput.value = '';
+                    descInput.value = '';
+                    
+                    // 保存后刷新模型列表
+                    await refreshModels();
+                    
+                    showStatus('模型保存成功！');
+                    console.log('模型保存完成');
+                } catch (error) {
+                    console.error('保存失败:', error);
+                    showStatus('保存失败: ' + error, true);
+                } finally {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = originalText;
+                }
+            });
+            
+            // 搜索功能 - 实时搜索
+            document.getElementById('search-input').addEventListener('input', function() {
+                const query = this.value.trim();
+                
+                // 清除之前的计时器
+                if (searchTimeout) {
+                    clearTimeout(searchTimeout);
+                }
+                
+                // 设置新的计时器，实现防抖
+                searchTimeout = setTimeout(async () => {
+                    if (query) {
+                        try {
+                            isSearching = true;
+                            currentSearchQuery = query;
+                            
+                            const results = await searchModels(query);
+                            renderSearchDropdown(results);
+                        } catch (error) {
+                            console.error('搜索失败:', error);
+                        }
+                    } else {
+                        hideSearchDropdown();
+                    }
+                }, 300);
+            });
+            
+            // 搜索按钮点击事件
+            document.getElementById('search-btn').addEventListener('click', async function() {
+                const query = document.getElementById('search-input').value.trim();
+                
+                if (!query) {
+                    showStatus('请输入搜索关键词', true);
+                    return;
+                }
+                
+                try {
+                    isSearching = true;
+                    currentSearchQuery = query;
+                    
+                    const results = await searchModels(query);
+                    renderModels(results);
+                    hideSearchDropdown();
+                    showStatus(`找到 ${results.length} 个匹配的模型`);
+                } catch (error) {
+                    console.error('搜索失败:', error);
+                    showStatus('搜索失败: ' + error, true);
+                }
+            });
+            
+            // 显示所有模型
+            document.getElementById('show-all-btn').addEventListener('click', async function() {
+                try {
+                    isSearching = false;
+                    currentSearchQuery = '';
+                    
+                    const models = await getAllModels();
+                    renderModels(models);
+                    document.getElementById('search-input').value = '';
+                    hideSearchDropdown();
+                    showStatus(`已显示全部 ${models.length} 个模型`);
+                } catch (error) {
+                    console.error('获取模型失败:', error);
+                    showStatus('获取模型失败: ' + error, true);
+                }
+            });
+            
+            // 关闭查看器
+            document.getElementById('close-viewer').addEventListener('click', function() {
+                const viewerSection = document.getElementById('viewer-section');
+                if (viewerSection) {
+                    viewerSection.style.display = 'none';
+                }
+            });
+            
+            // 删除确认对话框事件
+            document.getElementById('confirm-delete').addEventListener('click', function(e) {
+                e.preventDefault();
+                console.log('确认删除按钮被点击');
+                executeDelete();
+            });
+            
+            document.getElementById('cancel-delete').addEventListener('click', function(e) {
+                e.preventDefault();
+                hideDeleteConfirm();
+            });
+            
+            // 点击模态框背景关闭
+            document.getElementById('delete-modal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    hideDeleteConfirm();
+                }
+            });
+            
+            // 点击页面其他区域关闭搜索下拉
+            document.addEventListener('click', function(e) {
+                const searchSection = document.querySelector('.search-section');
+                if (!searchSection.contains(e.target)) {
+                    hideSearchDropdown();
+                }
+            });
+            
+            console.log('应用初始化完成');
+        });
+    </script>
+</body>
+</html>
