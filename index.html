@@ -596,7 +596,7 @@
                     
                     <div id="status-message" class="status-message"></div>
                     
-                    <button class="btn" id="save-btn" onclick="location.reload()">保存模型</button>
+                    <button class="btn" id="save-btn">保存模型</button>
                 </div>
                 
                 <div class="instructions">
@@ -1175,7 +1175,7 @@
                 
                 function animate() {
                     requestAnimationFrame(animate);
-                    mesh.rotation.z += 0.01;
+                    mesh.rotation.z += -0.01;
                     renderer.render(scene, camera);
                 }
                 animate();
